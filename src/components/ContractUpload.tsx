@@ -79,12 +79,23 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
       return;
     }
 
-    // Handle PDF and Word files via backend extraction
+    // Handle Word documents - inform user to convert
     if (
-      file.type === "application/pdf" ||
       file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.type === "application/msword"
     ) {
+      toast({
+        title: "Word documents not supported",
+        description: "Please convert your Word document to PDF or paste the text directly into the text area.",
+        variant: "destructive",
+      });
+      setIsExtracting(false);
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    // Handle PDF files via backend extraction
+    if (file.type === "application/pdf") {
       try {
         // Show extraction toast
         toast({
@@ -145,7 +156,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
     // Unsupported file type
     toast({
       title: "Unsupported file type",
-      description: "Please upload a .txt, .pdf, or .docx file, or paste your agreement text directly.",
+      description: "Please upload a .txt or .pdf file, or paste your agreement text directly.",
       variant: "destructive",
     });
     setIsExtracting(false);
@@ -202,7 +213,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
                         Drop your agreement file here or <span className="text-primary">browse</span>
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Supports .txt, .pdf, and .docx files (max 10MB)
+                        Supports .txt and .pdf files (max 10MB)
                       </p>
                     </>
                   )}
@@ -211,7 +222,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
               <input
                 id="file-upload"
                 type="file"
-                accept=".txt,.pdf,.doc,.docx"
+                accept=".txt,.pdf"
                 className="hidden"
                 onChange={handleFileUpload}
                 disabled={isAnalyzing || isExtracting}
