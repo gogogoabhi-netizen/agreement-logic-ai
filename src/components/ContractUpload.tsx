@@ -4,6 +4,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Upload, FileText, Sparkles, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ContractUploadProps {
   onAnalyze: (text: string) => void;
@@ -18,21 +22,53 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check for PDF/Word files and show coming soon message
-    if (file.type === "application/pdf" || 
-        file.type === "application/msword" || 
+    // Handle Word files - show coming soon message
+    if (file.type === "application/msword" || 
         file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       toast({
-        title: "PDF support coming soon",
-        description: "PDF and Word support is coming soon. Please paste the contract text for now.",
+        title: "Word support coming soon",
+        description: "Word document support is coming soon. Please paste the contract text or use a PDF for now.",
       });
       return;
     }
 
+    // Handle PDF files
+    if (file.type === "application/pdf") {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+
+        // Extract text from each page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(" ");
+          fullText += pageText + "\n";
+        }
+
+        setContractText(fullText.trim());
+        toast({
+          title: "PDF extracted successfully",
+          description: `Extracted text from ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error reading PDF",
+          description: "There was a problem extracting text from your PDF. Please try again or paste the text manually.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // Handle text files
     if (file.type !== "text/plain") {
       toast({
         title: "Unsupported file type",
-        description: "Please upload a .txt file or paste your agreement text directly.",
+        description: "Please upload a .txt or .pdf file, or paste your agreement text directly.",
         variant: "destructive",
       });
       return;
@@ -92,7 +128,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
                     Drop your agreement file here or <span className="text-primary">browse</span>
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Supports .txt files (PDF & Word coming soon)
+                    Supports .txt and .pdf files (Word coming soon)
                   </p>
                 </div>
               </div>
