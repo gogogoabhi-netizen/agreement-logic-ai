@@ -17,11 +17,28 @@ interface ContractUploadProps {
 
 export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) => {
   const [contractText, setContractText] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+  const MIN_TEXT_LENGTH = 100; // Minimum characters for a valid contract
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file under 10MB.",
+        variant: "destructive",
+      });
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    setIsExtracting(true);
 
     // Handle Word files (.docx)
     if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
@@ -30,16 +47,27 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
         const result = await mammoth.extractRawText({ arrayBuffer });
         const text = result.value;
 
-        if (!text.trim()) {
+        const trimmedText = text.trim();
+
+        if (!trimmedText) {
           toast({
             title: "Empty document",
             description: "The Word document appears to be empty. Please check the file and try again.",
             variant: "destructive",
           });
+          setIsExtracting(false);
           return;
         }
 
-        setContractText(text.trim());
+        if (trimmedText.length < MIN_TEXT_LENGTH) {
+          toast({
+            title: "Document too short",
+            description: "The extracted text seems too short for a contract. Please verify the document contains the full agreement text.",
+            variant: "destructive",
+          });
+        }
+
+        setContractText(trimmedText);
         toast({
           title: "Word document extracted",
           description: "Text successfully extracted from your Word document.",
@@ -50,6 +78,8 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
           description: "There was a problem extracting text from your Word document. Please try again or paste the text manually.",
           variant: "destructive",
         });
+      } finally {
+        setIsExtracting(false);
       }
       return;
     }
@@ -61,6 +91,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
         description: "Please save your document as .docx format or paste the text directly.",
         variant: "destructive",
       });
+      setIsExtracting(false);
       return;
     }
 
@@ -81,7 +112,27 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
           fullText += pageText + "\n";
         }
 
-        setContractText(fullText.trim());
+        const trimmedText = fullText.trim();
+
+        if (!trimmedText) {
+          toast({
+            title: "Empty PDF",
+            description: "The PDF appears to be empty or contains only images. Please try a different file or paste the text manually.",
+            variant: "destructive",
+          });
+          setIsExtracting(false);
+          return;
+        }
+
+        if (trimmedText.length < MIN_TEXT_LENGTH) {
+          toast({
+            title: "PDF text too short",
+            description: "The extracted text seems too short for a contract. The PDF may contain mostly images or be incomplete.",
+            variant: "destructive",
+          });
+        }
+
+        setContractText(trimmedText);
         toast({
           title: "PDF extracted successfully",
           description: `Extracted text from ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}.`,
@@ -92,6 +143,8 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
           description: "There was a problem extracting text from your PDF. Please try again or paste the text manually.",
           variant: "destructive",
         });
+      } finally {
+        setIsExtracting(false);
       }
       return;
     }
@@ -103,12 +156,33 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
         description: "Please upload a .txt, .pdf, or .docx file, or paste your agreement text directly.",
         variant: "destructive",
       });
+      setIsExtracting(false);
       return;
     }
 
     try {
       const text = await file.text();
-      setContractText(text);
+      const trimmedText = text.trim();
+
+      if (!trimmedText) {
+        toast({
+          title: "Empty file",
+          description: "The text file appears to be empty. Please check the file and try again.",
+          variant: "destructive",
+        });
+        setIsExtracting(false);
+        return;
+      }
+
+      if (trimmedText.length < MIN_TEXT_LENGTH) {
+        toast({
+          title: "File too short",
+          description: "The text seems too short for a contract. Please verify the file contains the full agreement text.",
+          variant: "destructive",
+        });
+      }
+
+      setContractText(trimmedText);
       toast({
         title: "File uploaded",
         description: "Your agreement text has been loaded successfully.",
@@ -119,6 +193,8 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
         description: "There was a problem reading your file. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -149,19 +225,34 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
 
         <div className="space-y-4">
           {/* Drag and Drop Area */}
-          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-            <label htmlFor="file-upload" className="cursor-pointer block">
+          <div className={`border-2 border-dashed border-border rounded-lg p-8 text-center transition-all ${
+            isExtracting ? "opacity-50 pointer-events-none" : "hover:border-primary/50"
+          }`}>
+            <label htmlFor="file-upload" className={`${isExtracting ? "cursor-not-allowed" : "cursor-pointer"} block`}>
               <div className="flex flex-col items-center gap-3">
                 <div className="p-3 bg-secondary rounded-full">
-                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  <Upload className={`w-6 h-6 text-muted-foreground ${isExtracting ? "animate-pulse" : ""}`} />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">
-                    Drop your agreement file here or <span className="text-primary">browse</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Supports .txt, .pdf, and .docx files
-                  </p>
+                  {isExtracting ? (
+                    <>
+                      <p className="font-medium text-foreground">
+                        Extracting text from your document...
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Please wait while we process your file
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-foreground">
+                        Drop your agreement file here or <span className="text-primary">browse</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Supports .txt, .pdf, and .docx files (max 10MB)
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
               <input
@@ -170,7 +261,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
                 accept=".txt,.pdf,.doc,.docx"
                 className="hidden"
                 onChange={handleFileUpload}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || isExtracting}
               />
             </label>
           </div>
@@ -191,7 +282,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
               value={contractText}
               onChange={(e) => setContractText(e.target.value)}
               className="min-h-[200px] resize-none font-mono text-sm"
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || isExtracting}
             />
             {!contractText && (
               <div className="mt-3 p-3 bg-muted/50 rounded-lg flex items-start gap-2">
@@ -206,7 +297,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
 
           <Button
             onClick={handleAnalyze}
-            disabled={isAnalyzing || !contractText.trim()}
+            disabled={isAnalyzing || isExtracting || !contractText.trim()}
             className="w-full h-12 text-lg font-semibold bg-gradient-primary hover:opacity-90 transition-opacity shadow-glow"
           >
             {isAnalyzing ? (
