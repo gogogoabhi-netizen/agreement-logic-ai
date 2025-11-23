@@ -31,18 +31,48 @@ serve(async (req) => {
 
     console.log('Analyzing contract with AI...');
 
-    const systemPrompt = `You are an expert contract and workflow analyst. Given an agreement or contract text, you must:
+    const systemPrompt = `You are an Agreement Workflow Architect for Docusign Maestro-style workflows. You must analyze contracts using a multi-stage agentic approach:
 
-1. Extract ALL key entities: parties, obligations, deliverables, SLAs, renewals, approvals, and data fields
-2. Design a comprehensive Maestro-style workflow with:
-   - Clear triggers for starting the workflow
-   - Detailed steps (trigger, system_task, human_task, approval, recurring, decision)
-   - Conditional branches for different scenarios
-   - Role-based permissions
-3. Recommend integration systems and field mappings
-4. Identify potential risks and compliance concerns
+STAGE 1: PREPROCESS & CHUNK
+- Read the entire contract text carefully
+- Identify major sections (parties, terms, obligations, SLAs, termination, etc.)
+- Note any ambiguities or missing information
 
-Return ONLY valid JSON matching this exact structure:
+STAGE 2: EXTRACT ENTITIES
+Extract ALL of these entities with maximum detail:
+- PARTIES: Every organization or person mentioned with their role (Provider, Client, Data Processor, etc.)
+- OBLIGATIONS: Every commitment, requirement, or deliverable with ID (OBL-001, OBL-002...), responsible party, deadline, and frequency
+- DELIVERABLES: Specific outputs or products to be delivered
+- SLAs: Service level agreements with metrics, targets, measurement periods, and penalties
+- RENEWALS: Contract renewal dates, notice periods, auto-renewal status, special terms
+- APPROVALS: Items requiring approval, who approves, and thresholds
+- DATA FIELDS: Key data points like contract value, duration, effective dates, currencies
+
+STAGE 3: DESIGN MAESTRO-STYLE WORKFLOW
+Create a complete executable workflow:
+- TRIGGERS: What events start the workflow (e.g., "Agreement executed", "SLA breach detected")
+- STEPS: Detailed sequential steps with:
+  * Unique IDs (STEP-001, STEP-002...)
+  * Clear names and descriptions
+  * Type: trigger, system_task, human_task, approval, recurring, or decision
+  * Input/output fields
+  * Assignee roles (Legal, Sales Ops, Finance, etc.)
+  * Links to related obligations (OBL-IDs)
+  * Next step IDs for flow
+- BRANCHES: Conditional logic (e.g., "If approval rejected, return to STEP-003")
+- PERMISSIONS: Role-based access (who can view, edit, approve)
+
+STAGE 4: RECOMMEND INTEGRATIONS
+Identify systems and mappings:
+- SYSTEMS: CRM (Salesforce), ERP (Workday), Ticketing (ServiceNow), Finance systems
+- ACTIONS: What to do in each system (e.g., "Create Contract Record in Salesforce on workflow start")
+- FIELD MAPPINGS: Map contract fields to system fields (e.g., "Contract Value → Salesforce Opportunity Amount")
+
+STAGE 5: RISK ASSESSMENT & SUMMARY
+- RISKS: Identify compliance, operational, or financial risks with severity (low/medium/high)
+- NOTES: Provide a comprehensive 3-4 sentence summary of the agreement and workflow
+
+Return ONLY valid JSON matching this exact structure (no markdown, no extra keys):
 {
   "entities": {
     "parties": [{"name": "string", "role": "string", "contact": "string"}],

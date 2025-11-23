@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { ContractUpload } from "@/components/ContractUpload";
 import { AnalysisResults } from "@/components/AnalysisResults";
+import { SummaryMetrics } from "@/components/SummaryMetrics";
+import { ExportActions } from "@/components/ExportActions";
+import { FeatureTeasers } from "@/components/FeatureTeasers";
 import { AgreementAnalysis } from "@/types/agreement";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { FileText } from "lucide-react";
+import { FileText, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [analysis, setAnalysis] = useState<AgreementAnalysis | null>(null);
@@ -65,18 +69,44 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-8">
-          <ContractUpload onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
-          
-          {analysis && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <AnalysisResults analysis={analysis} />
-            </div>
-          )}
+          {!analysis ? (
+            <>
+              <ContractUpload onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+              
+              {!isAnalyzing && (
+                <div className="space-y-6">
+                  <div className="text-center py-8">
+                    <h2 className="text-2xl font-bold mb-2">How It Works</h2>
+                    <p className="text-muted-foreground">
+                      Our AI-powered analysis transforms contracts into structured, actionable workflows
+                    </p>
+                  </div>
+                  <FeatureTeasers />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+              {/* Back Button */}
+              <Button
+                variant="outline"
+                onClick={() => setAnalysis(null)}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Analyze Another Agreement
+              </Button>
 
-          {!analysis && !isAnalyzing && (
-            <div className="text-center py-16 text-muted-foreground">
-              <p className="text-lg">Upload or paste an agreement to get started</p>
-              <p className="text-sm mt-2">The AI will automatically extract entities, design workflows, and identify risks</p>
+              {/* Summary Metrics */}
+              <SummaryMetrics analysis={analysis} />
+
+              {/* Export Actions */}
+              <div className="flex justify-end">
+                <ExportActions analysis={analysis} />
+              </div>
+
+              {/* Analysis Results */}
+              <AnalysisResults analysis={analysis} />
             </div>
           )}
         </div>
