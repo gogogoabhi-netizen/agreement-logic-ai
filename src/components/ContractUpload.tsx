@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Upload, FileText, Sparkles, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as pdfjsLib from "pdfjs-dist";
+import mammoth from "mammoth";
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -22,12 +23,43 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Handle Word files - show coming soon message
-    if (file.type === "application/msword" || 
-        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    // Handle Word files (.docx)
+    if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        const text = result.value;
+
+        if (!text.trim()) {
+          toast({
+            title: "Empty document",
+            description: "The Word document appears to be empty. Please check the file and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setContractText(text.trim());
+        toast({
+          title: "Word document extracted",
+          description: "Text successfully extracted from your Word document.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error reading Word document",
+          description: "There was a problem extracting text from your Word document. Please try again or paste the text manually.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // Handle legacy Word files (.doc) - not supported
+    if (file.type === "application/msword") {
       toast({
-        title: "Word support coming soon",
-        description: "Word document support is coming soon. Please paste the contract text or use a PDF for now.",
+        title: "Legacy .doc format not supported",
+        description: "Please save your document as .docx format or paste the text directly.",
+        variant: "destructive",
       });
       return;
     }
@@ -68,7 +100,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
     if (file.type !== "text/plain") {
       toast({
         title: "Unsupported file type",
-        description: "Please upload a .txt or .pdf file, or paste your agreement text directly.",
+        description: "Please upload a .txt, .pdf, or .docx file, or paste your agreement text directly.",
         variant: "destructive",
       });
       return;
@@ -128,7 +160,7 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
                     Drop your agreement file here or <span className="text-primary">browse</span>
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Supports .txt and .pdf files (Word coming soon)
+                    Supports .txt, .pdf, and .docx files
                   </p>
                 </div>
               </div>
