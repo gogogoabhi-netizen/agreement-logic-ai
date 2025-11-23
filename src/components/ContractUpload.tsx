@@ -4,11 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Upload, FileText, Sparkles, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import * as pdfjsLib from "pdfjs-dist";
-import mammoth from "mammoth";
-
-// Configure PDF.js worker - use jsdelivr CDN for better reliability
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+import { supabase } from "@/integrations/supabase/client";
 
 interface ContractUploadProps {
   onAnalyze: (text: string) => void;
@@ -18,6 +14,7 @@ interface ContractUploadProps {
 export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) => {
   const [contractText, setContractText] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
   const { toast } = useToast();
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
@@ -38,21 +35,19 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
       return;
     }
 
+    setSelectedFileName(file.name);
     setIsExtracting(true);
 
-    // Handle Word files (.docx)
-    if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    // Handle plain text files directly
+    if (file.type === "text/plain") {
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const text = result.value;
-
+        const text = await file.text();
         const trimmedText = text.trim();
 
         if (!trimmedText) {
           toast({
-            title: "Empty document",
-            description: "The Word document appears to be empty. Please check the file and try again.",
+            title: "Empty file",
+            description: "The text file appears to be empty. Please check the file and try again.",
             variant: "destructive",
           });
           setIsExtracting(false);
@@ -60,22 +55,85 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
         }
 
         if (trimmedText.length < MIN_TEXT_LENGTH) {
+          toast({
+            title: "File too short",
+            description: "The text seems too short for a contract. Please verify the file contains the full agreement text.",
+            variant: "destructive",
+          });
+        }
+
+        setContractText(trimmedText);
+        toast({
+          title: "File uploaded",
+          description: "Your agreement text has been loaded successfully.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error reading file",
+          description: "There was a problem reading your file. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsExtracting(false);
+      }
+      return;
+    }
+
+    // Handle PDF and Word files via backend extraction
+    if (
+      file.type === "application/pdf" ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.type === "application/msword"
+    ) {
+      try {
+        // Show extraction toast
+        toast({
+          title: "Extracting text",
+          description: `Processing ${file.name}...`,
+        });
+
+        // Create form data and send to backend
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const { data, error } = await supabase.functions.invoke('extract-contract-text', {
+          body: formData,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.error) {
+          toast({
+            title: "Extraction failed",
+            description: data.error,
+            variant: "destructive",
+          });
+          setIsExtracting(false);
+          return;
+        }
+
+        const extractedText = data.contract_text;
+
+        if (!extractedText || extractedText.trim().length < MIN_TEXT_LENGTH) {
           toast({
             title: "Document too short",
-            description: "The extracted text seems too short for a contract. Please verify the document contains the full agreement text.",
+            description: "The extracted text seems too short for a contract. Please verify the document.",
             variant: "destructive",
           });
         }
 
-        setContractText(trimmedText);
+        setContractText(extractedText);
         toast({
-          title: "Word document extracted",
-          description: "Text successfully extracted from your Word document.",
+          title: "Extraction successful",
+          description: `Text extracted from ${file.name}`,
         });
       } catch (error) {
+        console.error('Extraction error:', error);
         toast({
-          title: "Error reading Word document",
-          description: "There was a problem extracting text from your Word document. Please try again or paste the text manually.",
+          title: "Extraction failed",
+          description: "Could not extract text from this file. Please try another file or paste the text manually.",
           variant: "destructive",
         });
       } finally {
@@ -84,118 +142,13 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
       return;
     }
 
-    // Handle legacy Word files (.doc) - not supported
-    if (file.type === "application/msword") {
-      toast({
-        title: "Legacy .doc format not supported",
-        description: "Please save your document as .docx format or paste the text directly.",
-        variant: "destructive",
-      });
-      setIsExtracting(false);
-      return;
-    }
-
-    // Handle PDF files
-    if (file.type === "application/pdf") {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = "";
-
-        // Extract text from each page
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(" ");
-          fullText += pageText + "\n";
-        }
-
-        const trimmedText = fullText.trim();
-
-        if (!trimmedText) {
-          toast({
-            title: "Empty PDF",
-            description: "The PDF appears to be empty or contains only images. Please try a different file or paste the text manually.",
-            variant: "destructive",
-          });
-          setIsExtracting(false);
-          return;
-        }
-
-        if (trimmedText.length < MIN_TEXT_LENGTH) {
-          toast({
-            title: "PDF text too short",
-            description: "The extracted text seems too short for a contract. The PDF may contain mostly images or be incomplete.",
-            variant: "destructive",
-          });
-        }
-
-        setContractText(trimmedText);
-        toast({
-          title: "PDF extracted successfully",
-          description: `Extracted text from ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}.`,
-        });
-      } catch (error) {
-        toast({
-          title: "Error reading PDF",
-          description: "There was a problem extracting text from your PDF. Please try again or paste the text manually.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsExtracting(false);
-      }
-      return;
-    }
-
-    // Handle text files
-    if (file.type !== "text/plain") {
-      toast({
-        title: "Unsupported file type",
-        description: "Please upload a .txt, .pdf, or .docx file, or paste your agreement text directly.",
-        variant: "destructive",
-      });
-      setIsExtracting(false);
-      return;
-    }
-
-    try {
-      const text = await file.text();
-      const trimmedText = text.trim();
-
-      if (!trimmedText) {
-        toast({
-          title: "Empty file",
-          description: "The text file appears to be empty. Please check the file and try again.",
-          variant: "destructive",
-        });
-        setIsExtracting(false);
-        return;
-      }
-
-      if (trimmedText.length < MIN_TEXT_LENGTH) {
-        toast({
-          title: "File too short",
-          description: "The text seems too short for a contract. Please verify the file contains the full agreement text.",
-          variant: "destructive",
-        });
-      }
-
-      setContractText(trimmedText);
-      toast({
-        title: "File uploaded",
-        description: "Your agreement text has been loaded successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error reading file",
-        description: "There was a problem reading your file. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExtracting(false);
-    }
+    // Unsupported file type
+    toast({
+      title: "Unsupported file type",
+      description: "Please upload a .txt, .pdf, or .docx file, or paste your agreement text directly.",
+      variant: "destructive",
+    });
+    setIsExtracting(false);
   };
 
   const handleAnalyze = () => {
@@ -265,6 +218,12 @@ export const ContractUpload = ({ onAnalyze, isAnalyzing }: ContractUploadProps) 
               />
             </label>
           </div>
+
+          {selectedFileName && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium">Selected:</span> {selectedFileName}
+            </div>
+          )}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
