@@ -169,12 +169,12 @@ const Index = () => {
             </div>
             
             {/* Center: Title */}
-            <div className="flex flex-col items-center text-center">
-              <div className="flex items-center gap-3 mb-1">
+            <div className="flex flex-col items-center text-center gap-1">
+              <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-primary rounded-lg">
                   <FileText className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground">Agreement Workflow Copilot</h1>
+                <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">Agreement Workflow Copilot</h1>
               </div>
               <p className="text-sm text-muted-foreground">AI-powered contract analysis and workflow automation</p>
             </div>
