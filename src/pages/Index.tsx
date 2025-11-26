@@ -158,31 +158,38 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border bg-card shadow-sm">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-primary rounded-lg">
-                <FileText className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-foreground">Agreement Workflow Copilot</h1>
-                  {userName && (
-                    <span className="text-sm text-muted-foreground font-normal">
-                      · Greetings {userName}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">AI-powered contract analysis and workflow automation</p>
-              </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            {/* Left: Greetings */}
+            <div className="flex items-center">
+              {userName && (
+                <span className="text-sm text-muted-foreground">
+                  Greetings {userName}
+                </span>
+              )}
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowLogoutDialog(true)}
-              className="gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
+            
+            {/* Center: Title */}
+            <div className="flex flex-col items-center text-center">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="p-2 bg-gradient-primary rounded-lg">
+                  <FileText className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <h1 className="text-2xl font-bold text-foreground">Agreement Workflow Copilot</h1>
+              </div>
+              <p className="text-sm text-muted-foreground">AI-powered contract analysis and workflow automation</p>
+            </div>
+            
+            {/* Right: Logout */}
+            <div className="flex items-center justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowLogoutDialog(true)}
+                className="gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
