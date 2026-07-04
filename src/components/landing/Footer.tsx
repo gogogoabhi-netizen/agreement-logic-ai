@@ -17,6 +17,13 @@ const footerLinks = [
     ],
   },
   {
+    heading: "Legal",
+    links: [
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms of Service", href: "/terms" },
+    ],
+  },
+  {
     heading: "Contact",
     links: [
       { label: "info@pactlyhq.com", href: "mailto:info@pactlyhq.com" },
