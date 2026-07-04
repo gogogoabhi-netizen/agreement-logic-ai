@@ -27,7 +27,7 @@ const Auth = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/");
+        navigate("/app");
       }
     };
     checkSession();
@@ -63,7 +63,7 @@ const Auth = () => {
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
-        navigate("/");
+        navigate("/app");
       }
     } catch (error) {
       toast({
@@ -106,7 +106,7 @@ const Auth = () => {
           data: {
             name: signupName,
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/app`,
         },
       });
 
@@ -121,7 +121,7 @@ const Auth = () => {
           title: "Account created!",
           description: "Welcome to Agreement Workflow Copilot.",
         });
-        navigate("/");
+        navigate("/app");
       }
     } catch (error) {
       toast({
