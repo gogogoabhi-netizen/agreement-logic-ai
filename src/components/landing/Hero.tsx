@@ -85,7 +85,7 @@ export const Hero = () => {
           <div className="absolute -inset-4 rounded-3xl bg-accent/20 blur-2xl" aria-hidden />
           <div className="relative overflow-hidden rounded-2xl border border-white/15 shadow-lg">
             <img
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
+              src="/contract-workflow-hero.jpg"
               alt="Dark analytics dashboard visualizing agreement workflow data"
               className="h-full w-full object-cover"
               loading="eager"
